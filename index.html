@@ -10,7 +10,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap");
 
@@ -173,9 +172,6 @@
       const { useMemo, useState, useEffect } = React;
 
       const storageKey = "myway-body-composition-analyzer:v1";
-      // ใส่ LIFF ID จริงของ MyWay ที่ได้จาก LINE Developers ตรงนี้ครั้งเดียว
-      // ตัวอย่าง: const MYWAY_LIFF_ID = "2000000000-AbCdEfGh";
-      const MYWAY_LIFF_ID = "";
       const disclaimer =
         "ข้อมูลนี้เป็นการประเมินเบื้องต้นเพื่อใช้ในการดูแลสุขภาพและวางแผนโภชนาการทั่วไป ไม่ใช่การวินิจฉัยโรค หากมีโรคประจำตัว ตั้งครรภ์ ใช้ยา หรือมีภาวะสุขภาพเฉพาะ ควรปรึกษาแพทย์หรือนักกำหนดอาหารก่อนปรับแผนโภชนาการ";
 
@@ -518,29 +514,6 @@
         saveBlob("\ufeff" + toCsv(rows), filename, "text/csv;charset=utf-8");
       }
 
-      function getInitialLiffId() {
-        const params = new URLSearchParams(window.location.search);
-        return MYWAY_LIFF_ID || params.get("liffId") || "";
-      }
-
-      async function shareToLine(text) {
-        if (window.liff?.isApiAvailable?.("shareTargetPicker")) {
-          await window.liff.shareTargetPicker([
-            {
-              type: "text",
-              text,
-            },
-          ]);
-          return true;
-        }
-        if (navigator.share) {
-          await navigator.share({ title: "MyWay", text });
-          return true;
-        }
-        await navigator.clipboard?.writeText(text);
-        return false;
-      }
-
       function Icon({ path, label }) {
         return (
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-400/10 text-emerald-300" title={label}>
@@ -634,32 +607,6 @@
             </div>
             <button className="btn btn-danger mt-4 w-full text-sm" onClick={onReset}>Reset Data</button>
           </aside>
-        );
-      }
-
-      function LiffPanel({ liffState, onLogin, onShare }) {
-        const isReady = liffState.status === "พร้อมใช้งาน";
-        return (
-          <section className="card no-print p-4">
-            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">LINE LIFF</p>
-                <h2 className="text-lg font-black">MyWay สำหรับ LINE OA</h2>
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  สถานะ: <span className={isReady ? "text-emerald-300" : "text-yellow-200"}>{liffState.status}</span>
-                  {liffState.profile?.displayName ? ` · ผู้ใช้ LINE: ${liffState.profile.displayName}` : ""}
-                  {liffState.isInClient ? " · เปิดอยู่ใน LINE" : " · เปิดผ่าน Browser"}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button className="btn btn-secondary text-sm" onClick={onLogin}>Login LINE</button>
-                <button className="btn btn-primary text-sm" onClick={onShare}>แชร์ลิงก์เข้า LINE</button>
-              </div>
-            </div>
-            <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm leading-7 text-slate-300">
-              วิธีใช้กับ LINE OA: ใส่ LIFF ID จริงในตัวแปร <code className="text-emerald-300">MYWAY_LIFF_ID</code> แล้วใช้ลิงก์ <code className="text-emerald-300">https://liff.line.me/LIFF_ID</code> ใน Rich Menu, ข้อความ Broadcast หรือปุ่มใน LINE OA เพื่อให้เว็บเปิดเป็น LIFF และเชื่อมกับ LINE อัตโนมัติ
-            </div>
-          </section>
         );
       }
 
@@ -933,11 +880,6 @@
         const [clientDraft, setClientDraft] = useState(selectedClient ? { ...emptyClient, ...selectedClient } : emptyClient);
         const [assessmentDraft, setAssessmentDraft] = useState({ ...emptyAssessment, filledBy: selectedClient?.filledBy || "" });
         const [message, setMessage] = useState("");
-        const [liffState, setLiffState] = useState({
-          status: getInitialLiffId() ? "กำลังเชื่อมต่อ LIFF" : "ยังไม่ได้ตั้งค่า LIFF ID",
-          isInClient: false,
-          profile: null,
-        });
 
         useEffect(() => {
           localStorage.setItem(storageKey, JSON.stringify(clients));
@@ -949,39 +891,6 @@
             setAssessmentDraft({ ...emptyAssessment, filledBy: selectedClient.filledBy || "" });
           }
         }, [selectedId]);
-
-        useEffect(() => {
-          const liffId = getInitialLiffId();
-          if (!liffId || !window.liff) return;
-          let active = true;
-          async function initLiff() {
-            try {
-              await window.liff.init({ liffId });
-              if (!active) return;
-              const isLoggedIn = window.liff.isLoggedIn();
-              const isInClient = window.liff.isInClient();
-              let profile = null;
-              if (isLoggedIn) {
-                profile = await window.liff.getProfile();
-              }
-              setLiffState({
-                status: isLoggedIn || isInClient ? "พร้อมใช้งาน" : "พร้อมใช้งาน แต่ยังไม่ได้ Login LINE",
-                isInClient,
-                profile,
-              });
-              if (profile?.displayName) {
-                setClientDraft((draft) => ({ ...draft, filledBy: draft.filledBy || profile.displayName }));
-                setAssessmentDraft((draft) => ({ ...draft, filledBy: draft.filledBy || profile.displayName }));
-              }
-            } catch (error) {
-              setLiffState({ status: `เชื่อมต่อ LIFF ไม่สำเร็จ: ${error.message}`, isInClient: false, profile: null });
-            }
-          }
-          initLiff();
-          return () => {
-            active = false;
-          };
-        }, []);
 
         const sortedAssessments = selectedClient?.assessments || [];
         const before = sortedAssessments[0];
@@ -1074,42 +983,12 @@
           window.print();
         }
 
-        function loginLine() {
-          if (!window.liff) {
-            alert("ยังโหลด LINE LIFF SDK ไม่สำเร็จ");
-            return;
-          }
-          if (!getInitialLiffId()) {
-            alert("กรุณาตั้งค่า MYWAY_LIFF_ID ในไฟล์ index.html ก่อนใช้งาน Login LINE");
-            return;
-          }
-          if (!window.liff.isLoggedIn()) {
-            window.liff.login({ redirectUri: window.location.href });
-          }
-        }
-
-        async function shareCurrentReport() {
-          if (!selectedClient || !latest) return;
-          const text = `MyWay\nสรุปล่าสุดของ ${selectedClient.name}\nน้ำหนัก ${latest.weightKg} kg, BMI ${latest.bmi} (${latest.bmiStatus})\nBMR ${latest.bmr} kcal, TDEE ${latest.tdee} kcal, Calories Target ${latest.caloriesTarget} kcal\nโปรตีน ${latest.proteinMinGram}-${latest.proteinMaxGram} g/วัน ไขมัน ${latest.fatMinGram}-${latest.fatMaxGram} g/วัน คาร์บ ${latest.carbGram} g/วัน\nบันทึกโดย: ${latest.filledBy || selectedClient.filledBy}\n\n${disclaimer}`;
-          try {
-            const usedLine = await shareToLine(text);
-            setMessage(usedLine ? "เปิดหน้าต่างแชร์ไปยัง LINE แล้ว" : "คัดลอกสรุปไว้แล้ว สามารถนำไปวางใน LINE ได้");
-          } catch (error) {
-            setMessage(`แชร์ไม่สำเร็จ: ${error.message}`);
-          }
-        }
-
         return (
           <main className="min-h-screen p-3 sm:p-5">
             <div className="mx-auto grid max-w-[1760px] gap-5 lg:grid-cols-[280px_minmax(0,1fr)_340px]">
               <ClientPanel clients={clients} selectedId={selectedId} setSelectedId={setSelectedId} onNew={newClient} onReset={resetData} />
               <div className="min-w-0 space-y-5">
                 {message && <div className="no-print rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm font-bold text-emerald-100">{message}</div>}
-                <LiffPanel
-                  liffState={liffState}
-                  onLogin={loginLine}
-                  onShare={shareCurrentReport}
-                />
                 <EntryForm clientDraft={clientDraft} setClientDraft={setClientDraft} assessmentDraft={assessmentDraft} setAssessmentDraft={setAssessmentDraft} onSave={saveAssessment} />
                 <Dashboard client={selectedClient} latest={latest} before={before} after={after} comparison={comparison} />
               </div>
