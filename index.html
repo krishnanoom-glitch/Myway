@@ -173,7 +173,9 @@
       const { useMemo, useState, useEffect } = React;
 
       const storageKey = "myway-body-composition-analyzer:v1";
-      const liffStorageKey = "myway-liff-id";
+      // ใส่ LIFF ID จริงของ MyWay ที่ได้จาก LINE Developers ตรงนี้ครั้งเดียว
+      // ตัวอย่าง: const MYWAY_LIFF_ID = "2000000000-AbCdEfGh";
+      const MYWAY_LIFF_ID = "";
       const disclaimer =
         "ข้อมูลนี้เป็นการประเมินเบื้องต้นเพื่อใช้ในการดูแลสุขภาพและวางแผนโภชนาการทั่วไป ไม่ใช่การวินิจฉัยโรค หากมีโรคประจำตัว ตั้งครรภ์ ใช้ยา หรือมีภาวะสุขภาพเฉพาะ ควรปรึกษาแพทย์หรือนักกำหนดอาหารก่อนปรับแผนโภชนาการ";
 
@@ -518,7 +520,7 @@
 
       function getInitialLiffId() {
         const params = new URLSearchParams(window.location.search);
-        return params.get("liffId") || localStorage.getItem(liffStorageKey) || "";
+        return MYWAY_LIFF_ID || params.get("liffId") || "";
       }
 
       async function shareToLine(text) {
@@ -635,7 +637,7 @@
         );
       }
 
-      function LiffPanel({ liffState, liffIdDraft, setLiffIdDraft, onSaveLiffId, onLogin, onShare }) {
+      function LiffPanel({ liffState, onLogin, onShare }) {
         const isReady = liffState.status === "พร้อมใช้งาน";
         return (
           <section className="card no-print p-4">
@@ -654,12 +656,8 @@
                 <button className="btn btn-primary text-sm" onClick={onShare}>แชร์ลิงก์เข้า LINE</button>
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-              <input className="field" value={liffIdDraft} placeholder="ใส่ LIFF ID เช่น 2000000000-AbCdEfGh" onChange={(e) => setLiffIdDraft(e.target.value)} />
-              <button className="btn btn-secondary" onClick={onSaveLiffId}>บันทึก LIFF ID</button>
-            </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm leading-7 text-slate-300">
-              วิธีใช้กับ LINE OA: Deploy ไฟล์นี้บน HTTPS แล้วนำ URL ไปสร้าง LIFF ใน LINE Developers จากนั้นใช้ลิงก์รูปแบบ <code className="text-emerald-300">https://your-domain.com/?liffId=LIFF_ID</code> ใส่ใน Rich Menu, ข้อความ Broadcast หรือปุ่มใน LINE OA
+              วิธีใช้กับ LINE OA: ใส่ LIFF ID จริงในตัวแปร <code className="text-emerald-300">MYWAY_LIFF_ID</code> แล้วใช้ลิงก์ <code className="text-emerald-300">https://liff.line.me/LIFF_ID</code> ใน Rich Menu, ข้อความ Broadcast หรือปุ่มใน LINE OA เพื่อให้เว็บเปิดเป็น LIFF และเชื่อมกับ LINE อัตโนมัติ
             </div>
           </section>
         );
@@ -935,7 +933,6 @@
         const [clientDraft, setClientDraft] = useState(selectedClient ? { ...emptyClient, ...selectedClient } : emptyClient);
         const [assessmentDraft, setAssessmentDraft] = useState({ ...emptyAssessment, filledBy: selectedClient?.filledBy || "" });
         const [message, setMessage] = useState("");
-        const [liffIdDraft, setLiffIdDraft] = useState(getInitialLiffId());
         const [liffState, setLiffState] = useState({
           status: getInitialLiffId() ? "กำลังเชื่อมต่อ LIFF" : "ยังไม่ได้ตั้งค่า LIFF ID",
           isInClient: false,
@@ -1077,24 +1074,13 @@
           window.print();
         }
 
-        function saveLiffId() {
-          const id = liffIdDraft.trim();
-          if (!id) {
-            localStorage.removeItem(liffStorageKey);
-            setLiffState({ status: "ยังไม่ได้ตั้งค่า LIFF ID", isInClient: false, profile: null });
-            return;
-          }
-          localStorage.setItem(liffStorageKey, id);
-          setMessage("บันทึก LIFF ID แล้ว กรุณารีเฟรชหน้าเพื่อเริ่มเชื่อมต่อ LINE LIFF");
-        }
-
         function loginLine() {
           if (!window.liff) {
             alert("ยังโหลด LINE LIFF SDK ไม่สำเร็จ");
             return;
           }
           if (!getInitialLiffId()) {
-            alert("กรุณาใส่ LIFF ID ก่อนใช้งาน Login LINE");
+            alert("กรุณาตั้งค่า MYWAY_LIFF_ID ในไฟล์ index.html ก่อนใช้งาน Login LINE");
             return;
           }
           if (!window.liff.isLoggedIn()) {
@@ -1121,9 +1107,6 @@
                 {message && <div className="no-print rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm font-bold text-emerald-100">{message}</div>}
                 <LiffPanel
                   liffState={liffState}
-                  liffIdDraft={liffIdDraft}
-                  setLiffIdDraft={setLiffIdDraft}
-                  onSaveLiffId={saveLiffId}
                   onLogin={loginLine}
                   onShare={shareCurrentReport}
                 />
