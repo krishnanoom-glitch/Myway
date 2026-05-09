@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyWay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap");
+
+      :root {
+        color-scheme: dark;
+        --bg: #080a09;
+        --panel: #111514;
+        --panel-2: #161b19;
+        --line: #27302c;
+        --muted: #98a6a0;
+        --text: #f4f7f5;
+        --green: #36d982;
+        --yellow: #f2c94c;
+        --orange: #f2994a;
+        --red: #ef5d5d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(54, 217, 130, 0.14), transparent 34rem),
+          linear-gradient(180deg, #080a09 0%, #0c100e 100%);
+        color: var(--text);
+        font-family: "Noto Sans Thai", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(22, 27, 25, 0.96), rgba(13, 17, 15, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      }
+
+      .soft-card {
+        background: rgba(255, 255, 255, 0.045);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+      }
+
+      .field {
+        width: 100%;
+        border: 1px solid #33403a;
+        border-radius: 8px;
+        background: #090d0b;
+        color: var(--text);
+        padding: 0.72rem 0.78rem;
+        outline: none;
+        min-height: 44px;
+      }
+
+      .field:focus {
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px rgba(54, 217, 130, 0.16);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 42px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        padding: 0.64rem 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: transform 160ms ease, border 160ms ease, background 160ms ease;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn-primary {
+        background: var(--green);
+        color: #031007;
+      }
+
+      .btn-secondary {
+        background: #17201c;
+        border-color: #314239;
+        color: var(--text);
+      }
+
+      .btn-danger {
+        background: rgba(239, 93, 93, 0.12);
+        border-color: rgba(239, 93, 93, 0.38);
+        color: #ffaaaa;
+      }
+
+      .badge {
+        border-radius: 999px;
+        padding: 0.2rem 0.58rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .status-green {
+        background: rgba(54, 217, 130, 0.14);
+        color: #7af0aa;
+        border: 1px solid rgba(54, 217, 130, 0.35);
+      }
+
+      .status-yellow {
+        background: rgba(242, 201, 76, 0.13);
+        color: #ffe08a;
+        border: 1px solid rgba(242, 201, 76, 0.32);
+      }
+
+      .status-orange {
+        background: rgba(242, 153, 74, 0.13);
+        color: #ffc08b;
+        border: 1px solid rgba(242, 153, 74, 0.34);
+      }
+
+      .status-red {
+        background: rgba(239, 93, 93, 0.14);
+        color: #ff9b9b;
+        border: 1px solid rgba(239, 93, 93, 0.36);
+      }
+
+      .mini-scroll {
+        scrollbar-color: #39443f #101411;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+          color: #111111;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        .card,
+        .soft-card {
+          background: #ffffff !important;
+          color: #111111 !important;
+          border-color: #d7d7d7 !important;
+          box-shadow: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useMemo, useState, useEffect, useRef } = React;
+
+      const storageKey = "myway-body-composition-analyzer:v1";
+      const visualGuideStorageKey = "myway-body-fat-visual-guides:v1";
+      const disclaimer =
+        "ข้อมูลนี้เป็นการประเมินเบื้องต้นเพื่อใช้ในการดูแลสุขภาพและวางแผนโภชนาการทั่วไป ไม่ใช่การวินิจฉัยโรค หากมีโรคประจำตัว ตั้งครรภ์ ใช้ยา หรือมีภาวะสุขภาพเฉพาะ ควรปรึกษาแพทย์หรือนักกำหนดอาหารก่อนปรับแผนโภชนาการ";
+
+      const emptyClient = {
+        name: "",
+        age: "",
+        gender: "หญิง",
+        heightCm: "",
+        goal: "ลดไขมัน",
+        activityLevel: "นั่งทำงานเป็นหลัก / ออกกำลังกายน้อยมาก",
+        filledBy: "",
+        startDate: new Date().toISOString().slice(0, 10),
+      };
+
+      const emptyAssessment = {
+        date: new Date().toISOString().slice(0, 10),
+        filledBy: "",
+        weightKg: "",
+        bodyFatPercent: "",
+        targetBodyFatPercent: "",
+        muscleMassKg: "",
+        bodyWaterPercent: "",
+        boneMassKg: "",
+        bmr: "",
+        visceralFat: "",
+        bodyAge: "",
+      };
+
+      const activityFactors = {
+        "นั่งทำงานเป็นหลัก / ออกกำลังกายน้อยมาก": 1.2,
+        "ออกกำลังกายเบา 1-2 วันต่อสัปดาห์": 1.375,
+        "ออกกำลังกายปานกลาง 3-4 วันต่อสัปดาห์": 1.55,
+        "ออกกำลังกายหนัก 5-6 วันต่อสัปดาห์": 1.725,
+        "ใช้แรงเยอะ / นักกีฬา": 1.9,
+      };
+
+      const bodyFatTargetOptions = {
+        "หญิง": [
+          { label: "10-12% นักกีฬา / กล้ามชัดมาก", value: 11 },
+          { label: "15-17% Lean ชัด", value: 16 },
+          { label: "20-22% Fit / Lean", value: 21 },
+          { label: "25% สุขภาพทั่วไป", value: 25 },
+          { label: "30%", value: 30 },
+          { label: "35%", value: 35 },
+          { label: "40%", value: 40 },
+          { label: "45%", value: 45 },
+          { label: "50%", value: 50 },
+        ],
+        "ชาย": [
+          { label: "3-4% นักกีฬาเพาะกาย", value: 3.5 },
+          { label: "6-7% กล้ามชัดมาก", value: 6.5 },
+          { label: "10-12% Lean ชัด", value: 11 },
+          { label: "15% Fit / Lean", value: 15 },
+          { label: "20% สุขภาพทั่วไป", value: 20 },
+          { label: "25%", value: 25 },
+          { label: "30%", value: 30 },
+          { label: "35%", value: 35 },
+          { label: "40%", value: 40 },
+        ],
+      };
+
+      function defaultBodyFatTarget(gender) {
+        return gender === "ชาย" ? 15 : 21;
+      }
+
+      const metricMeta = [
+        ["weightKg", "Weight", "kg"],
+        ["bmi", "BMI", ""],
+        ["bodyFatPercent", "Body Fat %", "%"],
+        ["muscleMassKg", "Muscle Mass", "kg"],
+        ["bodyWaterPercent", "Body Water %", "%"],
+        ["boneMassKg", "Bone Mass", "kg"],
+        ["bmr", "BMR", "kcal"],
+        ["visceralFat", "Visceral Fat", ""],
+        ["bodyAge", "Body Age", "ปี"],
+      ];
+
+      function n(value, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function round(value, digits = 1) {
+        const factor = 10 ** digits;
+        return Math.round(n(value) * factor) / factor;
+      }
+
+      function uid(prefix) {
+        return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function analyzeBmi(bmi) {
+        if (bmi < 18.5) return { label: "ผอมไป", tone: "yellow" };
+        if (bmi < 23) return { label: "ปกติ", tone: "green" };
+        if (bmi < 25) return { label: "น้ำหนักเกิน", tone: "yellow" };
+        if (bmi < 30) return { label: "โรคอ้วน", tone: "orange" };
+        return { label: "โรคอ้วนอันตราย", tone: "red" };
+      }
+
+      function analyzeMuscle(gender, value) {
+        const female = gender === "หญิง";
+        if (female) {
+          if (value <= 25.8) return { label: "ต่ำ", tone: "orange" };
+          if (value <= 27.9) return { label: "ปกติ", tone: "green" };
+          if (value <= 29) return { label: "สูง", tone: "green" };
+          return { label: "สูงมาก", tone: "green" };
+        }
+        if (value <= 32.8) return { label: "ต่ำ", tone: "orange" };
+        if (value <= 35.7) return { label: "ปกติ", tone: "green" };
+        if (value <= 37.3) return { label: "สูง", tone: "green" };
+        return { label: "สูงมาก", tone: "green" };
+      }
+
+      function analyzeWater(gender, value) {
+        const low = gender === "หญิง" ? 45 : 50;
+        const high = gender === "หญิง" ? 60 : 65;
+        if (value < low) return { label: "ต่ำกว่ามาตรฐาน", tone: "yellow" };
+        if (value <= high) return { label: "อยู่ในเกณฑ์ดี", tone: "green" };
+        return { label: "สูงกว่ามาตรฐาน", tone: "yellow" };
+      }
+
+      function boneStandard(gender, weight) {
+        if (gender === "หญิง") {
+          if (weight < 50) return 1.95;
+          if (weight <= 75) return 2.4;
+          return 2.95;
+        }
+        if (weight < 65) return 2.66;
+        if (weight <= 75) return 3.29;
+        return 3.69;
+      }
+
+      function analyzeBone(gender, weight, boneMass) {
+        const standard = boneStandard(gender, weight);
+        if (boneMass < standard - 0.2) return { label: "ต่ำกว่าค่าประมาณ", tone: "yellow", standard };
+        if (boneMass > standard + 0.2) return { label: "สูงกว่าค่าประมาณ", tone: "green", standard };
+        return { label: "ใกล้เคียงค่าประมาณ", tone: "green", standard };
+      }
+
+      function analyzeVisceral(value) {
+        if (value <= 2) return { label: "สุขภาพสมบูรณ์สูงสุด", tone: "green" };
+        if (value <= 5) return { label: "ปกติ", tone: "green" };
+        if (value <= 10) return { label: "ควรระวัง เริ่มมีไขมันสะสมในช่องท้อง", tone: "yellow" };
+        if (value <= 15) return { label: "อันตราย มีไขมันแทรกตามอวัยวะในช่องท้อง", tone: "orange" };
+        return { label: "อันตรายมาก มีความเสี่ยงสูง ควรปรับพฤติกรรมจริงจัง", tone: "red" };
+      }
+
+      function analyzeBodyAge(age, bodyAge) {
+        const gap = bodyAge - age;
+        if (gap < -2) return { label: "ดีมาก", tone: "green", gap };
+        if (Math.abs(gap) <= 2) return { label: "ปกติ", tone: "green", gap };
+        return { label: "ควรปรับองค์ประกอบร่างกาย", tone: "yellow", gap };
+      }
+
+      function caloriesTarget(goal, tdee) {
+        if (goal === "ลดไขมัน") return tdee * 0.85;
+        if (goal === "เพิ่มกล้ามเนื้อ") return tdee * 1.1;
+        return tdee;
+      }
+
+      function nutritionSummary(goal, weight, calories, proteinMin, proteinMax, fatMin, fatMax, carb) {
+        const goalAdvice = {
+          "ลดไขมัน": "เน้นโปรตีนสูง คุม Calories Target ลดน้ำหวาน ของทอด ขนม ทำเวทเทรนนิ่ง 3-4 วันต่อสัปดาห์ และเพิ่มการเดิน 7,000-10,000 ก้าวต่อวัน",
+          "รักษารูปร่าง": "กินใกล้เคียง TDEE รักษาโปรตีนให้ถึง และออกกำลังกายสม่ำเสมอเพื่อคงองค์ประกอบร่างกาย",
+          "เพิ่มกล้ามเนื้อ": "เพิ่มพลังงานจาก TDEE ประมาณ 10% โปรตีนให้ถึง ทำเวทเทรนนิ่งแบบ Progressive Overload และนอนให้พอ",
+        }[goal];
+        return `จากน้ำหนักตัว ${round(weight)} kg และเป้าหมาย ${goal} แนะนำพลังงานประมาณ ${Math.round(calories)} kcal ต่อวัน โปรตีน ${Math.round(proteinMin)}-${Math.round(proteinMax)} กรัม ไขมัน ${Math.round(fatMin)}-${Math.round(fatMax)} กรัม และคาร์โบไฮเดรตประมาณ ${Math.round(carb)} กรัมต่อวัน ${goalAdvice}`;
+      }
+
+      function buildAssessment(raw, client) {
+        const weight = n(raw.weightKg);
+        const bodyFatPercent = n(raw.bodyFatPercent);
+        const targetBodyFatPercent = n(raw.targetBodyFatPercent, defaultBodyFatTarget(client.gender));
+        const currentFatMassKg = weight * (bodyFatPercent / 100);
+        const targetFatMassKg = weight * (targetBodyFatPercent / 100);
+        const fatLossNeededKg = Math.max(0, currentFatMassKg - targetFatMassKg);
+        const heightM = n(client.heightCm) / 100;
+        const bmi = heightM ? weight / (heightM * heightM) : 0;
+        const bmiAnalysis = analyzeBmi(bmi);
+        const muscleKg = n(raw.muscleMassKg || raw.muscleMassPercent);
+        const musclePercent = weight ? (muscleKg / weight) * 100 : 0;
+        const muscle = analyzeMuscle(client.gender, musclePercent);
+        const water = analyzeWater(client.gender, n(raw.bodyWaterPercent));
+        const bone = analyzeBone(client.gender, weight, n(raw.boneMassKg));
+        const visceral = analyzeVisceral(n(raw.visceralFat));
+        const bodyAge = analyzeBodyAge(n(client.age), n(raw.bodyAge));
+        const tdee = n(raw.bmr) * activityFactors[client.activityLevel];
+        const calories = caloriesTarget(client.goal, tdee);
+        const proteinMin = weight * 1.5;
+        const proteinMax = weight * 2;
+        const fatMin = (calories * 0.2) / 9;
+        const fatMax = (calories * 0.3) / 9;
+        const proteinMidCalories = ((proteinMin + proteinMax) / 2) * 4;
+        const fatMidCalories = ((fatMin + fatMax) / 2) * 9;
+        const carb = Math.max(0, (calories - proteinMidCalories - fatMidCalories) / 4);
+        return {
+          ...raw,
+          id: raw.id || uid("assessment"),
+          weightKg: round(weight),
+          bmi: round(bmi),
+          bmiStatus: bmiAnalysis.label,
+          bmiTone: bmiAnalysis.tone,
+          bodyFatPercent: round(bodyFatPercent),
+          targetBodyFatPercent: round(targetBodyFatPercent, 1),
+          currentFatMassKg: round(currentFatMassKg, 1),
+          targetFatMassKg: round(targetFatMassKg, 1),
+          fatLossNeededKg: round(fatLossNeededKg, 1),
+          fatLossInterpretation: fatLossNeededKg > 0 ? `ควรลดไขมันประมาณ ${round(fatLossNeededKg, 1)} kg เพื่อเข้าใกล้เป้าหมาย ${round(targetBodyFatPercent, 1)}%` : "เปอร์เซ็นต์ไขมันปัจจุบันอยู่ไม่เกินเป้าหมายที่เลือก",
+          muscleMassKg: round(muscleKg, 1),
+          muscleMassPercent: round(musclePercent),
+          muscleMassStatus: muscle.label,
+          muscleMassTone: muscle.tone,
+          bodyWaterPercent: round(raw.bodyWaterPercent),
+          bodyWaterStatus: water.label,
+          bodyWaterTone: water.tone,
+          boneMassKg: round(raw.boneMassKg, 2),
+          boneMassStatus: bone.label,
+          boneMassTone: bone.tone,
+          boneMassStandard: bone.standard,
+          bmr: Math.round(n(raw.bmr)),
+          visceralFat: round(raw.visceralFat, 0),
+          visceralFatStatus: visceral.label,
+          visceralFatTone: visceral.tone,
+          bodyAge: round(raw.bodyAge, 0),
+          bodyAgeInterpretation: bodyAge.label,
+          bodyAgeTone: bodyAge.tone,
+          bodyAgeGap: bodyAge.gap,
+          tdee: Math.round(tdee),
+          caloriesTarget: Math.round(calories),
+          proteinMinGram: Math.round(proteinMin),
+          proteinMaxGram: Math.round(proteinMax),
+          proteinCaloriesMin: Math.round(proteinMin * 4),
+          proteinCaloriesMax: Math.round(proteinMax * 4),
+          fatMinGram: Math.round(fatMin),
+          fatMaxGram: Math.round(fatMax),
+          carbGram: Math.round(carb),
+          nutritionSummary: nutritionSummary(client.goal, weight, calories, proteinMin, proteinMax, fatMin, fatMax, carb),
+        };
+      }
+
+      const demoClients = [
+        {
+          id: "demo-1",
+          name: "คุณตัวอย่าง",
+          age: 34,
+          gender: "หญิง",
+          heightCm: 163,
+          goal: "ลดไขมัน",
+          activityLevel: "ออกกำลังกายปานกลาง 3-4 วันต่อสัปดาห์",
+          filledBy: "Coach FYC",
+          startDate: "2026-04-01",
+          createdAt: "2026-04-01T09:00:00.000Z",
+          updatedAt: "2026-05-08T09:00:00.000Z",
+          assessments: [
+            buildAssessment(
+              { ...emptyAssessment, id: "a-1", date: "2026-04-01", filledBy: "Coach FYC", weightKg: 68.4, bodyFatPercent: 31.2, targetBodyFatPercent: 21, muscleMassKg: 17.9, bodyWaterPercent: 49.4, boneMassKg: 2.35, bmr: 1320, visceralFat: 8, bodyAge: 40 },
+              { gender: "หญิง", age: 34, heightCm: 163, goal: "ลดไขมัน", activityLevel: "ออกกำลังกายปานกลาง 3-4 วันต่อสัปดาห์" }
+            ),
+            buildAssessment(
+              { ...emptyAssessment, id: "a-2", date: "2026-05-08", filledBy: "Coach FYC", weightKg: 65.8, bodyFatPercent: 28.6, targetBodyFatPercent: 21, muscleMassKg: 17.9, bodyWaterPercent: 51.1, boneMassKg: 2.41, bmr: 1378, visceralFat: 6, bodyAge: 36 },
+              { gender: "หญิง", age: 34, heightCm: 163, goal: "ลดไขมัน", activityLevel: "ออกกำลังกายปานกลาง 3-4 วันต่อสัปดาห์" }
+            ),
+          ],
+        },
+      ];
+
+      function getBodyFatTip(gender, value) {
+        if (gender === "หญิง") {
+          if (value >= 21 && value <= 24) return "อยู่ใกล้เป้าหมายด้านรูปร่าง Fit / Lean โดยประมาณสำหรับผู้หญิง";
+          if (value < 21) return "ต่ำกว่าโซน Fit / Lean โดยประมาณ ควรดูแลพลังงานและสุขภาพรอบด้าน";
+          return "ถ้าเป้าหมายคือ Fit / Lean อาจค่อย ๆ ลดไขมันไปที่ 21-24%";
+        }
+        if (value >= 14 && value <= 17) return "อยู่ใกล้เป้าหมายด้านรูปร่าง Fit / Lean โดยประมาณสำหรับผู้ชาย";
+        if (value < 14) return "ต่ำกว่าโซน Fit / Lean โดยประมาณ เห็นกล้ามเนื้อชัดขึ้นแต่ควรดูแลสมดุล";
+        return "ถ้าเป้าหมายคือ Fit / Lean อาจค่อย ๆ ลดไขมันไปที่ 14-17%";
+      }
+
+      function compareInterpretation(key, before, after) {
+        const diff = n(after) - n(before);
+        if (key === "weightKg") return diff < 0 ? "น้ำหนักลดลง ดีเมื่อ Body Fat ลดและ Muscle Mass ไม่ลดมาก" : diff > 0 ? "น้ำหนักเพิ่มขึ้น ควรดูร่วมกับไขมันและกล้ามเนื้อ" : "คงที่";
+        if (key === "bodyFatPercent") return diff < 0 ? "ดี ไขมันลดลง" : diff > 0 ? "ควรระวัง ไขมันเพิ่มขึ้น" : "คงที่";
+        if (key === "muscleMassKg") return diff >= 0 ? "ดี กล้ามเนื้อเพิ่มขึ้นหรือคงที่" : "ควรรักษามวลกล้ามเนื้อให้มากขึ้น";
+        if (key === "bodyWaterPercent") return "ดูร่วมกับเกณฑ์น้ำในร่างกายล่าสุด";
+        if (key === "visceralFat") return diff < 0 ? "ดีมาก ไขมันช่องท้องลดลง" : diff > 0 ? "ควรโฟกัสการลดไขมันช่องท้อง" : "คงที่";
+        if (key === "bmr") return diff > 0 ? "แนวโน้มดี BMR เพิ่มขึ้น" : diff < 0 ? "ควรเสริมกล้ามเนื้อและกิจกรรมเพื่อสนับสนุน BMR" : "คงที่";
+        if (key === "bodyAge") return diff < 0 ? "ดี อายุร่างกายลดลง" : diff > 0 ? "ควรปรับองค์ประกอบร่างกาย" : "คงที่";
+        return diff < 0 ? "ลดลง" : diff > 0 ? "เพิ่มขึ้น" : "คงที่";
+      }
+
+      function makeComparison(before, after) {
+        if (!before || !after) return [];
+        return metricMeta.map(([key, label, unit]) => {
+          const beforeValue = n(before[key]);
+          const afterValue = n(after[key]);
+          const change = round(afterValue - beforeValue, key === "bmr" ? 0 : 1);
+          const percent = beforeValue ? round((change / beforeValue) * 100) : 0;
+          return {
+            key,
+            label,
+            unit,
+            beforeValue,
+            afterValue,
+            change,
+            percent,
+            interpretation: compareInterpretation(key, beforeValue, afterValue),
+          };
+        });
+      }
+
+      function coachRecommendation(client, latest, comparison) {
+        if (!client || !latest) return "";
+        const improvedFat = comparison.find((m) => m.key === "bodyFatPercent")?.change < 0;
+        const muscleOk = comparison.find((m) => m.key === "muscleMassKg")?.change >= 0;
+        return [
+          `1. ภาพรวมร่างกายตอนนี้: น้ำหนักล่าสุด ${latest.weightKg} kg, BMI ${latest.bmi} (${latest.bmiStatus}), Body Fat ${latest.bodyFatPercent}% และ Visceral Fat ระดับ ${latest.visceralFat}`,
+          `2. จุดแข็งของร่างกาย: ${latest.muscleMassStatus === "ต่ำ" ? "มีข้อมูลตั้งต้นชัดเจนสำหรับวางแผนเพิ่มกล้ามเนื้อ" : "มวลกล้ามเนื้ออยู่ในทิศทางที่ช่วยสนับสนุน BMR และการเผาผลาญ"}${muscleOk ? " และกล้ามเนื้อไม่ลดลงจากครั้งก่อน" : ""}`,
+          `3. จุดที่ควรปรับ: ${latest.visceralFat > 5 || latest.bodyFatPercent > (client.gender === "หญิง" ? 24 : 17) ? "โฟกัสการลดไขมันสะสม โดยเฉพาะ Body Fat และ Visceral Fat พร้อมรักษา Muscle Mass" : "รักษาความสม่ำเสมอของอาหาร การนอน และการออกกำลังกาย"}`,
+          `4. เป้าหมาย 30 วันข้างหน้า: ${client.goal} โดยใช้ Calories Target ประมาณ ${latest.caloriesTarget} kcal ต่อวัน และโฟกัสไขมันที่ต้องลดประมาณ ${latest.fatLossNeededKg} kg เพื่อเข้าใกล้ Body Fat เป้าหมาย ${latest.targetBodyFatPercent}%`,
+          `5. คำแนะนำเรื่องอาหาร: โปรตีน ${latest.proteinMinGram}-${latest.proteinMaxGram} กรัมต่อวัน ไขมัน ${latest.fatMinGram}-${latest.fatMaxGram} กรัม และคาร์โบไฮเดรตประมาณ ${latest.carbGram} กรัมต่อวัน`,
+          `6. คำแนะนำเรื่องการออกกำลังกาย: ${client.goal === "เพิ่มกล้ามเนื้อ" ? "ทำเวทเทรนนิ่งแบบ Progressive Overload และเพิ่มพลังงานอย่างค่อยเป็นค่อยไป" : client.goal === "ลดไขมัน" ? "เวทเทรนนิ่ง 3-4 วันต่อสัปดาห์ เดินเพิ่ม 7,000-10,000 ก้าวต่อวัน และคุมอาหารให้ทำได้ต่อเนื่อง" : "ออกกำลังกายสม่ำเสมอ รักษาโปรตีนให้ถึง และใช้พลังงานใกล้เคียง TDEE"}`,
+          `7. หมายเหตุ: ${disclaimer}`,
+        ].join("\n\n");
+      }
+
+      function saveBlob(content, filename, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function safeFileName(value) {
+        return String(value || "myway-report")
+          .trim()
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .replace(/\s+/g, "-")
+          .slice(0, 80);
+      }
+
+      function readImageAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function csvEscape(value) {
+        const text = value == null ? "" : String(value);
+        return `"${text.replaceAll('"', '""')}"`;
+      }
+
+      function toCsv(rows) {
+        return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+      }
+
+      function normalizeClient(client) {
+        const base = {
+          ...client,
+          gender: client.gender || "หญิง",
+          goal: client.goal || "ลดไขมัน",
+          activityLevel: client.activityLevel || "นั่งทำงานเป็นหลัก / ออกกำลังกายน้อยมาก",
+          assessments: [],
+        };
+        base.assessments = (client.assessments || []).map((assessment) => buildAssessment(assessment, base));
+        return base;
+      }
+
+      function workbookRows(clients, selectedClient) {
+        const chosen = selectedClient ? [selectedClient] : clients;
+        const profileRows = [["Client ID", "Client Name", "Age", "Gender", "Height Cm", "Start Date", "Goal", "Activity Level", "Filled By / ผู้กรอกข้อมูล", "Created At", "Updated At"]];
+        const assessmentRows = [["Client ID", "Client Name", "Assessment Date", "Filled By / ผู้กรอกข้อมูล", "Weight Kg", "BMI", "BMI Status", "Body Fat %", "Target Body Fat %", "Current Fat Mass Kg", "Target Fat Mass Kg", "Fat Loss Needed Kg", "Fat Loss Interpretation", "Muscle Mass Kg", "Muscle Mass % Derived", "Muscle Mass Status", "Body Water %", "Body Water Status", "Bone Mass Kg", "Bone Mass Status", "BMR", "Visceral Fat", "Visceral Fat Status", "Body Age", "Body Age Interpretation"]];
+        const nutritionRows = [["Client ID", "Client Name", "Assessment Date", "Filled By / ผู้กรอกข้อมูล", "Goal", "Activity Level", "BMR", "TDEE", "Calories Target", "Protein Min g", "Protein Max g", "Protein Calories Min", "Protein Calories Max", "Fat Min g", "Fat Max g", "Carbohydrate g", "Nutrition Summary"]];
+        const comparisonRows = [["Client ID", "Client Name", "Filled By / ผู้กรอกข้อมูล", "Before Date", "After Date", "Metric", "Before Value", "After Value", "Change", "Interpretation"]];
+        chosen.forEach((client) => {
+          profileRows.push([client.id, client.name, client.age, client.gender, client.heightCm, client.startDate, client.goal, client.activityLevel, client.filledBy, client.createdAt, client.updatedAt]);
+          client.assessments.forEach((a) => {
+            assessmentRows.push([client.id, client.name, a.date, a.filledBy, a.weightKg, a.bmi, a.bmiStatus, a.bodyFatPercent, a.targetBodyFatPercent, a.currentFatMassKg, a.targetFatMassKg, a.fatLossNeededKg, a.fatLossInterpretation, a.muscleMassKg, a.muscleMassPercent, a.muscleMassStatus, a.bodyWaterPercent, a.bodyWaterStatus, a.boneMassKg, a.boneMassStatus, a.bmr, a.visceralFat, a.visceralFatStatus, a.bodyAge, a.bodyAgeInterpretation]);
+            nutritionRows.push([client.id, client.name, a.date, a.filledBy, client.goal, client.activityLevel, a.bmr, a.tdee, a.caloriesTarget, a.proteinMinGram, a.proteinMaxGram, a.proteinCaloriesMin, a.proteinCaloriesMax, a.fatMinGram, a.fatMaxGram, a.carbGram, a.nutritionSummary]);
+          });
+          if (client.assessments.length >= 2) {
+            const before = client.assessments[0];
+            const after = client.assessments[client.assessments.length - 1];
+            makeComparison(before, after).forEach((m) => comparisonRows.push([client.id, client.name, after.filledBy || client.filledBy, before.date, after.date, m.label, m.beforeValue, m.afterValue, m.change, m.interpretation]));
+          }
+        });
+        return { profileRows, assessmentRows, nutritionRows, comparisonRows };
+      }
+
+      function exportXlsx(clients, selectedClient, kind) {
+        const rows = workbookRows(clients, kind === "all" ? null : selectedClient);
+        if (window.XLSX) {
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows.profileRows), "Client Profile");
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows.assessmentRows), "Body Composition");
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows.nutritionRows), "Nutrition Target");
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows.comparisonRows), "Before After");
+          XLSX.writeFile(wb, kind === "all" ? "tanita-all-clients.xlsx" : `tanita-${selectedClient?.name || "client"}.xlsx`);
+          return;
+        }
+        exportCsvRows(rows.profileRows, "client-profile.csv");
+      }
+
+      function exportCsvRows(rows, filename) {
+        saveBlob("\ufeff" + toCsv(rows), filename, "text/csv;charset=utf-8");
+      }
+
+      function Icon({ path, label }) {
+        return (
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-400/10 text-emerald-300" title={label}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d={path} />
+            </svg>
+          </span>
+        );
+      }
+
+      const icons = {
+        weight: "M4 19h16M7 19V9a5 5 0 0 1 10 0v10M9 9h6M12 9l2-3",
+        bmi: "M4 6h16M4 12h16M4 18h16M8 6v12M16 6v12",
+        fat: "M12 3c4 4 7 7 7 11a7 7 0 0 1-14 0c0-4 3-7 7-11Z",
+        muscle: "M7 13c2 0 2-5 5-5 2 0 2 3 4 3 2 0 3-2 3-2v7c0 2-1 3-3 3H8c-3 0-5-2-5-5 0-2 2-4 4-4v3Z",
+        water: "M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11Z",
+        bone: "M7 8a3 3 0 1 1 4-4l9 9a3 3 0 1 1-4 4l-9-9Z",
+        bmr: "M12 2v20M4.9 4.9l14.2 14.2M2 12h20M4.9 19.1 19.1 4.9",
+        visceral: "M8 20c-3-2-4-5-3-9l2-6c3 3 3 7 1 15ZM16 20c3-2 4-5 3-9l-2-6c-3 3-3 7-1 15Z",
+        age: "M12 3 4 7v6c0 5 3 8 8 8s8-3 8-8V7l-8-4ZM9 12h6M12 9v6",
+        nutrition: "M5 3v18M19 3v18M5 8h14M5 16h14",
+      };
+
+      function StatusBadge({ tone, children }) {
+        return <span className={`badge status-${tone || "green"}`}>{children}</span>;
+      }
+
+      function FormField({ label, children }) {
+        return (
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-slate-300">{label}</span>
+            {children}
+          </label>
+        );
+      }
+
+      function StatCard({ icon, title, value, unit, status, tone, children, progress }) {
+        return (
+          <section className="card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Icon path={icons[icon]} label={title} />
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">{title}</h3>
+                  <p className="text-xs text-slate-400">{unit}</p>
+                </div>
+              </div>
+              {status && <StatusBadge tone={tone}>{status}</StatusBadge>}
+            </div>
+            <div className="mt-4 flex items-end gap-1">
+              <span className="text-3xl font-black leading-none">{value}</span>
+              {unit && <span className="pb-1 text-sm font-bold text-slate-400">{unit}</span>}
+            </div>
+            {typeof progress === "number" && (
+              <div className="mt-4 h-2 rounded-full bg-white/10">
+                <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, Math.max(5, progress))}%` }} />
+              </div>
+            )}
+            <div className="mt-3 text-sm leading-6 text-slate-300">{children}</div>
+          </section>
+        );
+      }
+
+      function ClientPanel({ clients, selectedId, setSelectedId, onNew, onReset }) {
+        return (
+          <aside className="card no-print h-fit p-4 lg:sticky lg:top-5">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">Clients</p>
+                <h2 className="text-lg font-black">รายชื่อลูกค้า</h2>
+              </div>
+              <button className="btn btn-primary text-sm" onClick={onNew}>เพิ่มลูกค้าใหม่</button>
+            </div>
+            <div className="mini-scroll max-h-[52vh] space-y-2 overflow-auto pr-1">
+              {clients.map((client) => {
+                const latest = client.assessments.at(-1);
+                return (
+                  <button
+                    key={client.id}
+                    className={`w-full rounded-lg border p-3 text-left transition ${selectedId === client.id ? "border-emerald-400 bg-emerald-400/10" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}
+                    onClick={() => setSelectedId(client.id)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="text-sm">{client.name}</strong>
+                      <span className="text-xs text-slate-400">{latest ? latest.date : "ยังไม่มีผล"}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">{client.goal} · {client.gender} · {client.heightCm} cm</div>
+                  </button>
+                );
+              })}
+            </div>
+            <button className="btn btn-danger mt-4 w-full text-sm" onClick={onReset}>Reset Data</button>
+          </aside>
+        );
+      }
+
+      function BodyFatVisualGuide({ gender, imageSrc, targetPercent, compact = false }) {
+        const options = bodyFatTargetOptions[gender] || bodyFatTargetOptions["หญิง"];
+        return (
+          <section className={`card ${compact ? "p-4" : "p-5"}`}>
+            <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+              <div>
+                <h2 className="text-xl font-black">Body Fat Visual Guide</h2>
+                <p className="text-sm text-slate-400">แบ่งเปอร์เซ็นต์ไขมันตามภาพอ้างอิงสำหรับ{gender} ใช้เพื่อช่วยตั้งเป้าหมายรูปร่างโดยประมาณ</p>
+              </div>
+              <StatusBadge tone="green">เป้าหมาย {targetPercent}%</StatusBadge>
+            </div>
+            {imageSrc ? (
+              <img
+                className="mb-4 max-h-[520px] w-full rounded-lg border border-white/10 object-contain bg-black"
+                src={imageSrc}
+                alt={`ภาพอ้างอิงเปอร์เซ็นต์ไขมัน${gender}`}
+              />
+            ) : (
+              <div className="mb-4 rounded-lg border border-dashed border-white/20 bg-white/[0.03] p-5 text-center text-sm text-slate-400">
+                ยังไม่ได้ใส่รูปอ้างอิง Body Fat สำหรับ{gender} สามารถอัปโหลดรูปในส่วนฟอร์มด้านบน
+              </div>
+            )}
+            <div className="grid gap-2 sm:grid-cols-3">
+              {options.map((option) => {
+                const selected = Number(option.value) === Number(targetPercent);
+                return (
+                  <div key={option.value} className={`rounded-lg border p-3 ${selected ? "border-emerald-400 bg-emerald-400/12" : "border-white/10 bg-white/[0.03]"}`}>
+                    <p className="text-lg font-black text-white">{option.value}%</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-300">{option.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">หมายเหตุ: ภาพและเปอร์เซ็นต์เป็นเป้าหมายด้านรูปร่างโดยประมาณ ไม่ใช่การวินิจฉัยทางการแพทย์</p>
+          </section>
+        );
+      }
+
+      function EntryForm({ clientDraft, setClientDraft, assessmentDraft, setAssessmentDraft, onSave, guideImages, onGuideImageUpload, onClearGuideImage }) {
+        const clientFields = [
+          ["ชื่อ", "name", "text"],
+          ["อายุ", "age", "number"],
+          ["ส่วนสูง เซนติเมตร", "heightCm", "number"],
+          ["วันที่เริ่มโปรแกรม", "startDate", "date"],
+          ["ผู้กรอกข้อมูล / Coach / Admin Name", "filledBy", "text"],
+        ];
+        const assessmentFields = [
+          ["วันที่ประเมิน", "date", "date"],
+          ["Weight น้ำหนักตัว kg", "weightKg", "number"],
+          ["Body Fat %", "bodyFatPercent", "number"],
+          ["Muscle Mass kg", "muscleMassKg", "number"],
+          ["Body Water %", "bodyWaterPercent", "number"],
+          ["Bone Mass kg", "boneMassKg", "number"],
+          ["BMR kcal", "bmr", "number"],
+          ["Visceral Fat", "visceralFat", "number"],
+          ["Body Age", "bodyAge", "number"],
+        ];
+        return (
+          <section className="card no-print p-4">
+            <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-xl font-black">บันทึกข้อมูล Tanita</h2>
+                <p className="text-sm text-slate-400">กรอกโปรไฟล์ลูกค้าและค่าประเมินล่าสุด ระบบจะคำนวณ BMI, TDEE และสารอาหารให้อัตโนมัติ</p>
+              </div>
+              <button className="btn btn-primary" onClick={onSave}>บันทึกผลประเมิน</button>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr]">
+              <div className="soft-card p-4">
+                <h3 className="mb-3 font-extrabold">ข้อมูลพื้นฐาน</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {clientFields.map(([label, key, type]) => (
+                    <FormField key={key} label={label}>
+                      <input className="field" type={type} value={clientDraft[key]} onChange={(e) => setClientDraft({ ...clientDraft, [key]: e.target.value })} />
+                    </FormField>
+                  ))}
+                  <FormField label="เพศ">
+                    <select
+                      className="field"
+                      value={clientDraft.gender}
+                      onChange={(e) => {
+                        const gender = e.target.value;
+                        setClientDraft({ ...clientDraft, gender });
+                        setAssessmentDraft({ ...assessmentDraft, targetBodyFatPercent: defaultBodyFatTarget(gender) });
+                      }}
+                    >
+                      <option>หญิง</option>
+                      <option>ชาย</option>
+                    </select>
+                  </FormField>
+                  <FormField label="เป้าหมายของลูกค้า">
+                    <select className="field" value={clientDraft.goal} onChange={(e) => setClientDraft({ ...clientDraft, goal: e.target.value })}>
+                      <option>ลดไขมัน</option>
+                      <option>รักษารูปร่าง</option>
+                      <option>เพิ่มกล้ามเนื้อ</option>
+                    </select>
+                  </FormField>
+                  <FormField label="ระดับกิจกรรมต่อวัน">
+                    <select className="field sm:col-span-2" value={clientDraft.activityLevel} onChange={(e) => setClientDraft({ ...clientDraft, activityLevel: e.target.value })}>
+                      {Object.keys(activityFactors).map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </FormField>
+                  <FormField label={`รูปอ้างอิง Body Fat (${clientDraft.gender})`}>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                      <input className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-400 file:px-3 file:py-2 file:text-sm file:font-bold file:text-black" type="file" accept="image/*" onChange={(e) => onGuideImageUpload(clientDraft.gender, e.target.files?.[0])} />
+                      {guideImages?.[clientDraft.gender] && (
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <img className="h-16 w-24 rounded-lg border border-white/10 object-cover" src={guideImages[clientDraft.gender]} alt={`Body Fat guide ${clientDraft.gender}`} />
+                          <button className="btn btn-danger text-xs" type="button" onClick={() => onClearGuideImage(clientDraft.gender)}>ลบรูป</button>
+                        </div>
+                      )}
+                    </div>
+                  </FormField>
+                </div>
+              </div>
+              <div className="soft-card p-4">
+                <h3 className="mb-3 font-extrabold">ค่าจากเครื่องชั่ง Tanita</h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {assessmentFields.map(([label, key, type]) => (
+                    <FormField key={key} label={label}>
+                      <input className="field" step="0.1" type={type} value={assessmentDraft[key]} onChange={(e) => setAssessmentDraft({ ...assessmentDraft, [key]: e.target.value })} />
+                    </FormField>
+                  ))}
+                  <FormField label={`เปอร์เซ็นต์ไขมันเป้าหมาย (${clientDraft.gender})`}>
+                    <select
+                      className="field"
+                      value={assessmentDraft.targetBodyFatPercent || defaultBodyFatTarget(clientDraft.gender)}
+                      onChange={(e) => setAssessmentDraft({ ...assessmentDraft, targetBodyFatPercent: e.target.value })}
+                    >
+                      {bodyFatTargetOptions[clientDraft.gender].map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="ผู้กรอกผลประเมิน">
+                    <input className="field" value={assessmentDraft.filledBy} placeholder="ใช้ชื่อเดียวกับ Coach ได้" onChange={(e) => setAssessmentDraft({ ...assessmentDraft, filledBy: e.target.value })} />
+                  </FormField>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      }
+
+      function Dashboard({ client, latest, before, after, comparison, guideImages }) {
+        if (!client || !latest) {
+          return (
+            <section className="card p-8 text-center">
+              <h2 className="text-2xl font-black">ยังไม่มีข้อมูลประเมิน</h2>
+              <p className="mt-2 text-slate-400">เพิ่มลูกค้าและบันทึกค่าจากเครื่อง Tanita เพื่อเริ่มวิเคราะห์</p>
+            </section>
+          );
+        }
+        const weightChange = before && after ? round(after.weightKg - before.weightKg) : 0;
+        const weightPercent = before && after ? round((weightChange / before.weightKg) * 100) : 0;
+        return (
+          <div className="space-y-5">
+            <section className="card p-5">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div>
+                  <h1 className="text-2xl font-black md:text-4xl">MyWay</h1>
+                  <p className="mt-2 text-slate-400">ลูกค้า: <strong className="text-white">{client.name}</strong> · เป้าหมาย: {client.goal} · ประเมินล่าสุด: {latest.date}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="soft-card px-3 py-2">
+                    <p className="text-xs text-slate-400">อายุ</p>
+                    <strong>{client.age} ปี</strong>
+                  </div>
+                  <div className="soft-card px-3 py-2">
+                    <p className="text-xs text-slate-400">ส่วนสูง</p>
+                    <strong>{client.heightCm} cm</strong>
+                  </div>
+                  <div className="soft-card px-3 py-2">
+                    <p className="text-xs text-slate-400">บันทึกโดย</p>
+                    <strong>{latest.filledBy || client.filledBy}</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <StatCard icon="weight" title="Weight" value={latest.weightKg} unit="kg" status={`${weightChange >= 0 ? "+" : ""}${weightChange} kg`} tone={weightChange <= 0 ? "green" : "yellow"} progress={Math.max(10, 100 - latest.weightKg)}>
+                Before {before?.weightKg ?? "-"} kg · After {after?.weightKg ?? latest.weightKg} kg · เปลี่ยนแปลง {weightPercent}%
+              </StatCard>
+              <StatCard icon="bmi" title="BMI" value={latest.bmi} unit="" status={latest.bmiStatus} tone={latest.bmiTone} progress={(latest.bmi / 35) * 100}>
+                BMI = น้ำหนัก / ส่วนสูงเมตร² ใช้เป็นตัวชี้วัดเบื้องต้น ไม่ใช่การวินิจฉัยโรค
+              </StatCard>
+              <StatCard icon="fat" title="Body Fat %" value={latest.bodyFatPercent} unit="%" status="เป้าหมายรูปร่าง" tone={latest.bodyFatPercent <= (client.gender === "หญิง" ? 24 : 17) ? "green" : "yellow"} progress={latest.bodyFatPercent * 2.1}>
+                เป้าหมายที่เลือก {latest.targetBodyFatPercent}% · {getBodyFatTip(client.gender, latest.bodyFatPercent)} ระดับกล้ามเนื้อชัดโดยประมาณ: ผู้หญิง 14-20%, ผู้ชาย 6-13%
+              </StatCard>
+              <StatCard icon="fat" title="Fat Loss Target" value={latest.fatLossNeededKg} unit="kg" status={latest.fatLossNeededKg > 0 ? "ไขมันที่ควรลด" : "ถึงเป้าหมายแล้ว"} tone={latest.fatLossNeededKg > 0 ? "yellow" : "green"} progress={Math.min(100, latest.fatLossNeededKg * 8)}>
+                ไขมันปัจจุบัน {latest.currentFatMassKg} kg = {latest.bodyFatPercent}% x {latest.weightKg} kg · ไขมันเป้าหมาย {latest.targetFatMassKg} kg = {latest.targetBodyFatPercent}% x {latest.weightKg} kg
+              </StatCard>
+              <StatCard icon="muscle" title="Muscle Mass" value={latest.muscleMassKg} unit="kg" status={latest.muscleMassStatus} tone={latest.muscleMassTone} progress={Math.min(100, latest.muscleMassPercent * 1.8)}>
+                กล้ามเนื้อมีผลต่อ BMR และการเผาผลาญระยะยาว คิดเป็นประมาณ {latest.muscleMassPercent}% ของน้ำหนักตัวเพื่อใช้เทียบสถานะ
+              </StatCard>
+              <StatCard icon="water" title="Body Water %" value={latest.bodyWaterPercent} unit="%" status={latest.bodyWaterStatus} tone={latest.bodyWaterTone} progress={latest.bodyWaterPercent}>
+                น้ำในร่างกายสำคัญต่อการดูแลมวลรวมร่างกายและการลดน้ำหนัก
+              </StatCard>
+              <StatCard icon="bone" title="Bone Mass" value={latest.boneMassKg} unit="kg" status={latest.boneMassStatus} tone={latest.boneMassTone} progress={(latest.boneMassKg / latest.boneMassStandard) * 80}>
+                ค่ามาตรฐานโดยประมาณตามเพศและน้ำหนัก: {latest.boneMassStandard} kg ใช้ tolerance ±0.2 kg
+              </StatCard>
+              <StatCard icon="bmr" title="BMR" value={latest.bmr} unit="kcal" status="เผาผลาญพื้นฐาน" tone="green" progress={(latest.bmr / 2200) * 100}>
+                BMR เกี่ยวข้องกับแนวโน้มน้ำหนักขึ้นง่ายหรือลดยาก สนับสนุนได้ด้วยการออกกำลังกาย โปรตีน ความถี่อาหาร และมวลกล้ามเนื้อ
+              </StatCard>
+              <StatCard icon="visceral" title="Visceral Fat" value={latest.visceralFat} unit="" status={latest.visceralFatStatus} tone={latest.visceralFatTone} progress={(latest.visceralFat / 20) * 100}>
+                ไขมันที่เกาะตามอวัยวะในช่องท้อง ควรติดตามเพราะเกี่ยวข้องกับความเสี่ยงด้านสุขภาพและระบบเผาผลาญ
+              </StatCard>
+              <StatCard icon="age" title="Body Age" value={latest.bodyAge} unit="ปี" status={latest.bodyAgeInterpretation} tone={latest.bodyAgeTone} progress={Math.max(8, 100 - Math.abs(latest.bodyAgeGap) * 9)}>
+                อายุจริง {client.age} ปี · Gap {latest.bodyAgeGap > 0 ? "+" : ""}{latest.bodyAgeGap} ปี เทียบจากองค์ประกอบร่างกายโดยรวม
+              </StatCard>
+            </section>
+
+            <NutritionCard latest={latest} client={client} />
+            <BodyFatVisualGuide gender={client.gender} imageSrc={guideImages?.[client.gender]} targetPercent={latest.targetBodyFatPercent} />
+            <ComparisonTable comparison={comparison} before={before} after={after} />
+            <section className="card p-5">
+              <p className="text-sm font-bold text-slate-200">บันทึกข้อมูลโดย: {latest.filledBy || client.filledBy}</p>
+              <p className="mt-3 text-sm leading-7 text-yellow-50">
+                <strong>หมายเหตุ: </strong>{disclaimer}
+              </p>
+            </section>
+          </div>
+        );
+      }
+
+      function NutritionCard({ latest, client }) {
+        return (
+          <section className="card p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <Icon path={icons.nutrition} label="Nutrition Target" />
+              <div>
+                <h2 className="text-xl font-black">Nutrition Target</h2>
+                <p className="text-sm text-slate-400">คำนวณจาก BMR ของ Tanita, Activity Factor และเป้าหมาย {client.goal}</p>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <div className="soft-card p-4">
+                <p className="text-xs font-bold text-slate-400">BMR</p>
+                <strong className="text-2xl">{latest.bmr}</strong>
+                <p className="text-sm text-slate-400">kcal</p>
+              </div>
+              <div className="soft-card p-4">
+                <p className="text-xs font-bold text-slate-400">TDEE</p>
+                <strong className="text-2xl">{latest.tdee}</strong>
+                <p className="text-sm text-slate-400">kcal ต่อวัน</p>
+              </div>
+              <div className="soft-card p-4">
+                <p className="text-xs font-bold text-slate-400">Calories Target</p>
+                <strong className="text-2xl text-emerald-300">{latest.caloriesTarget}</strong>
+                <p className="text-sm text-slate-400">ควรกินพลังงานประมาณนี้</p>
+              </div>
+              <div className="soft-card p-4">
+                <p className="text-xs font-bold text-slate-400">Protein</p>
+                <strong className="text-2xl">{latest.proteinMinGram}-{latest.proteinMaxGram}</strong>
+                <p className="text-sm text-slate-400">กรัมต่อวัน ช่วยรักษา / เพิ่มกล้ามเนื้อ และให้อิ่มนาน</p>
+              </div>
+              <div className="soft-card p-4">
+                <p className="text-xs font-bold text-slate-400">Fat / Carbohydrate</p>
+                <strong className="text-2xl">{latest.fatMinGram}-{latest.fatMaxGram}</strong>
+                <p className="text-sm text-slate-400">ไขมัน g · คาร์บ {latest.carbGram} g เป็นพลังงานหลัก</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-7 text-emerald-50">
+              <strong>Coach Note: </strong>{latest.nutritionSummary}
+            </div>
+          </section>
+        );
+      }
+
+      function ComparisonTable({ comparison, before, after }) {
+        return (
+          <section className="card p-5">
+            <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
+              <div>
+                <h2 className="text-xl font-black">Before / After Comparison</h2>
+                <p className="text-sm text-slate-400">Before {before?.date || "-"} · After {after?.date || "-"}</p>
+              </div>
+            </div>
+            <div className="overflow-auto">
+              <table className="w-full min-w-[760px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-slate-400">
+                    <th className="py-3 pr-4">Metric</th>
+                    <th className="py-3 pr-4">Before</th>
+                    <th className="py-3 pr-4">After</th>
+                    <th className="py-3 pr-4">Change</th>
+                    <th className="py-3 pr-4">Interpretation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparison.map((row) => (
+                    <tr key={row.key} className="border-b border-white/10">
+                      <td className="py-3 pr-4 font-bold">{row.label}</td>
+                      <td className="py-3 pr-4">{row.beforeValue} {row.unit}</td>
+                      <td className="py-3 pr-4">{row.afterValue} {row.unit}</td>
+                      <td className={`py-3 pr-4 font-bold ${row.change <= 0 && ["weightKg", "bodyFatPercent", "visceralFat", "bodyAge"].includes(row.key) ? "text-emerald-300" : "text-slate-100"}`}>{row.change > 0 ? "+" : ""}{row.change} ({row.percent > 0 ? "+" : ""}{row.percent}%)</td>
+                      <td className="py-3 pr-4 text-slate-300">{row.interpretation}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      }
+
+      function CoachPanel({ client, latest, comparison, onExportCsv, onExportXlsx, onExportAll, onExportComparison, onExportNutrition, onPdf, onImage }) {
+        const summary = useMemo(() => coachRecommendation(client, latest, comparison), [client, latest, comparison]);
+        if (!client || !latest) return null;
+        return (
+          <aside className="space-y-4 lg:sticky lg:top-5">
+            <section className="card p-4">
+              <h2 className="text-lg font-black">สรุปผลสำหรับโค้ช</h2>
+              <textarea className="field mt-3 min-h-[340px] resize-y text-sm leading-7" readOnly value={summary} />
+              <p className="mt-3 text-sm font-bold text-slate-300">บันทึกข้อมูลโดย: {latest.filledBy || client.filledBy}</p>
+            </section>
+            <section className="card no-print p-4">
+              <h2 className="mb-3 text-lg font-black">Export</h2>
+              <div className="grid gap-2">
+                <button className="btn btn-primary" onClick={onPdf}>Export PDF</button>
+                <button className="btn btn-primary" onClick={onImage}>Export รูปภาพ PNG</button>
+                <button className="btn btn-secondary" onClick={onExportCsv}>Export CSV</button>
+                <button className="btn btn-secondary" onClick={onExportXlsx}>Export Client Data</button>
+                <button className="btn btn-secondary" onClick={onExportAll}>Export All Clients</button>
+                <button className="btn btn-secondary" onClick={onExportComparison}>Export Before / After Report</button>
+                <button className="btn btn-secondary" onClick={onExportNutrition}>Export Nutrition Plan</button>
+              </div>
+            </section>
+            <section className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-4 text-sm leading-7 text-yellow-50">
+              <strong>หมายเหตุ: </strong>{disclaimer}
+            </section>
+          </aside>
+        );
+      }
+
+      function App() {
+        const reportRef = useRef(null);
+        const [clients, setClients] = useState(() => {
+          try {
+            const saved = JSON.parse(localStorage.getItem(storageKey));
+            return Array.isArray(saved) && saved.length ? saved.map(normalizeClient) : demoClients;
+          } catch {
+            return demoClients;
+          }
+        });
+        const [selectedId, setSelectedId] = useState(clients[0]?.id || "");
+        const selectedClient = clients.find((client) => client.id === selectedId) || clients[0];
+        const [clientDraft, setClientDraft] = useState(selectedClient ? { ...emptyClient, ...selectedClient } : emptyClient);
+        const [assessmentDraft, setAssessmentDraft] = useState({ ...emptyAssessment, filledBy: selectedClient?.filledBy || "" });
+        const [guideImages, setGuideImages] = useState(() => {
+          try {
+            return JSON.parse(localStorage.getItem(visualGuideStorageKey)) || {};
+          } catch {
+            return {};
+          }
+        });
+        const [message, setMessage] = useState("");
+
+        useEffect(() => {
+          localStorage.setItem(storageKey, JSON.stringify(clients));
+        }, [clients]);
+
+        useEffect(() => {
+          localStorage.setItem(visualGuideStorageKey, JSON.stringify(guideImages));
+        }, [guideImages]);
+
+        useEffect(() => {
+          if (selectedClient) {
+            setClientDraft({ ...emptyClient, ...selectedClient });
+            setAssessmentDraft({ ...emptyAssessment, filledBy: selectedClient.filledBy || "" });
+          }
+        }, [selectedId]);
+
+        const sortedAssessments = selectedClient?.assessments || [];
+        const before = sortedAssessments[0];
+        const after = sortedAssessments.at(-1);
+        const latest = after;
+        const comparison = useMemo(() => makeComparison(before, after), [before, after]);
+
+        function validate() {
+          const required = [
+            ["ชื่อลูกค้า", clientDraft.name],
+            ["วันที่ประเมิน", assessmentDraft.date],
+            ["น้ำหนัก", assessmentDraft.weightKg],
+            ["ส่วนสูง", clientDraft.heightCm],
+            ["BMR", assessmentDraft.bmr],
+            ["เป้าหมาย", clientDraft.goal],
+            ["ระดับกิจกรรม", clientDraft.activityLevel],
+          ];
+          const filledBy = assessmentDraft.filledBy || clientDraft.filledBy;
+          if (!filledBy) return "กรุณาระบุชื่อผู้กรอกข้อมูลก่อนบันทึก";
+          const missing = required.find(([, value]) => value === "" || value == null);
+          return missing ? `กรุณากรอก${missing[0]}ก่อนบันทึก` : "";
+        }
+
+        function saveAssessment() {
+          const error = validate();
+          if (error) {
+            alert(error);
+            setMessage(error);
+            return;
+          }
+          const now = new Date().toISOString();
+          const baseClient = {
+            id: selectedClient?.id || uid("client"),
+            name: clientDraft.name.trim(),
+            age: n(clientDraft.age),
+            gender: clientDraft.gender,
+            heightCm: n(clientDraft.heightCm),
+            goal: clientDraft.goal,
+            activityLevel: clientDraft.activityLevel,
+            filledBy: clientDraft.filledBy || assessmentDraft.filledBy,
+            startDate: clientDraft.startDate,
+            createdAt: selectedClient?.createdAt || now,
+            updatedAt: now,
+            assessments: selectedClient?.assessments || [],
+          };
+          const assessment = buildAssessment({ ...assessmentDraft, filledBy: assessmentDraft.filledBy || baseClient.filledBy }, baseClient);
+          const nextClient = { ...baseClient, assessments: [...baseClient.assessments, assessment] };
+          setClients((current) => {
+            const exists = current.some((client) => client.id === nextClient.id);
+            return exists ? current.map((client) => (client.id === nextClient.id ? nextClient : client)) : [nextClient, ...current];
+          });
+          setSelectedId(nextClient.id);
+          setAssessmentDraft({ ...emptyAssessment, filledBy: nextClient.filledBy });
+          setMessage("บันทึกผลประเมินเรียบร้อย");
+        }
+
+        function newClient() {
+          const id = uid("client");
+          const now = new Date().toISOString();
+          const fresh = { ...emptyClient, id, createdAt: now, updatedAt: now, assessments: [] };
+          setClients((current) => [fresh, ...current]);
+          setSelectedId(id);
+        }
+
+        function resetData() {
+          if (confirm("ต้องการลบข้อมูลทั้งหมดและเริ่มใหม่หรือไม่")) {
+            localStorage.removeItem(storageKey);
+            setClients(demoClients);
+            setSelectedId(demoClients[0].id);
+            setMessage("รีเซ็ตข้อมูลเรียบร้อย");
+          }
+        }
+
+        async function handleGuideImageUpload(gender, file) {
+          if (!file) return;
+          if (!file.type.startsWith("image/")) {
+            alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+            return;
+          }
+          if (file.size > 2.5 * 1024 * 1024) {
+            alert("รูปภาพใหญ่เกินไป แนะนำให้ใช้ไฟล์ไม่เกิน 2.5 MB เพื่อให้เก็บใน browser ได้เสถียร");
+            return;
+          }
+          try {
+            const dataUrl = await readImageAsDataUrl(file);
+            setGuideImages((current) => ({ ...current, [gender]: dataUrl }));
+            setMessage(`เพิ่มรูปอ้างอิง Body Fat สำหรับ${gender}แล้ว`);
+          } catch (error) {
+            setMessage(`เพิ่มรูปไม่สำเร็จ: ${error.message}`);
+          }
+        }
+
+        function clearGuideImage(gender) {
+          setGuideImages((current) => {
+            const next = { ...current };
+            delete next[gender];
+            return next;
+          });
+          setMessage(`ลบรูปอ้างอิง Body Fat สำหรับ${gender}แล้ว`);
+        }
+
+        function exportSelectedCsv() {
+          const rows = workbookRows(clients, selectedClient);
+          exportCsvRows(rows.assessmentRows, `tanita-${selectedClient.name}-assessments.csv`);
+        }
+
+        function exportComparisonCsv() {
+          const rows = workbookRows(clients, selectedClient);
+          exportCsvRows(rows.comparisonRows, `tanita-${selectedClient.name}-before-after.csv`);
+        }
+
+        function exportNutritionCsv() {
+          const rows = workbookRows(clients, selectedClient);
+          exportCsvRows(rows.nutritionRows, `tanita-${selectedClient.name}-nutrition.csv`);
+        }
+
+        function exportPdf() {
+          exportReport("pdf");
+        }
+
+        function exportImage() {
+          exportReport("png");
+        }
+
+        async function exportReport(type) {
+          if (!selectedClient || !latest) return;
+          if (!window.html2canvas) {
+            alert("ยังโหลดเครื่องมือ Export รูปภาพไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้า");
+            return;
+          }
+          const target = reportRef.current;
+          if (!target) return;
+          setMessage(type === "pdf" ? "กำลังสร้างไฟล์ PDF..." : "กำลังสร้างไฟล์รูปภาพ...");
+          try {
+            const canvas = await window.html2canvas(target, {
+              backgroundColor: "#080a09",
+              scale: Math.min(2, window.devicePixelRatio || 1.5),
+              useCORS: true,
+              allowTaint: true,
+              logging: false,
+              ignoreElements: (element) => element.classList?.contains("no-print"),
+            });
+            const fileBase = safeFileName(`MyWay-${selectedClient.name}-${latest.date}`);
+            if (type === "png") {
+              const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+              if (!blob) throw new Error("ไม่สามารถสร้างรูปภาพได้");
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${fileBase}.png`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setMessage("Export รูปภาพ PNG เรียบร้อย");
+              return;
+            }
+            if (!window.jspdf?.jsPDF) {
+              alert("ยังโหลดเครื่องมือสร้าง PDF ไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้า");
+              setMessage("");
+              return;
+            }
+            const imgData = canvas.toDataURL("image/png", 1);
+            const pdf = new window.jspdf.jsPDF("p", "mm", "a4");
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+            }
+            pdf.save(`${fileBase}.pdf`);
+            setMessage("Export PDF เรียบร้อย");
+          } catch (error) {
+            console.error(error);
+            setMessage(`Export ไม่สำเร็จ: ${error.message}`);
+            alert(`Export ไม่สำเร็จ: ${error.message}`);
+          }
+        }
+
+        return (
+          <main className="min-h-screen p-3 sm:p-5">
+            <div className="mx-auto grid max-w-[1760px] gap-5 lg:grid-cols-[280px_minmax(0,1fr)_340px]">
+              <ClientPanel clients={clients} selectedId={selectedId} setSelectedId={setSelectedId} onNew={newClient} onReset={resetData} />
+              <div className="min-w-0 space-y-5">
+                {message && <div className="no-print rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm font-bold text-emerald-100">{message}</div>}
+                <EntryForm
+                  clientDraft={clientDraft}
+                  setClientDraft={setClientDraft}
+                  assessmentDraft={assessmentDraft}
+                  setAssessmentDraft={setAssessmentDraft}
+                  onSave={saveAssessment}
+                  guideImages={guideImages}
+                  onGuideImageUpload={handleGuideImageUpload}
+                  onClearGuideImage={clearGuideImage}
+                />
+                <div ref={reportRef}>
+                  <Dashboard client={selectedClient} latest={latest} before={before} after={after} comparison={comparison} guideImages={guideImages} />
+                </div>
+              </div>
+              <CoachPanel
+                client={selectedClient}
+                latest={latest}
+                comparison={comparison}
+                onExportCsv={exportSelectedCsv}
+                onExportXlsx={() => exportXlsx(clients, selectedClient, "client")}
+                onExportAll={() => exportXlsx(clients, null, "all")}
+                onExportComparison={exportComparisonCsv}
+                onExportNutrition={exportNutritionCsv}
+                onPdf={exportPdf}
+                onImage={exportImage}
+              />
+            </div>
+          </main>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
